@@ -95,3 +95,6 @@ fabric.properties
 
 # Executables
 /amq*
+
+.idea/
+.vscode/
