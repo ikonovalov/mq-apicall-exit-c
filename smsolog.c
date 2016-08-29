@@ -628,27 +628,6 @@ char * strpptr ( void *Pointer, char *format, char * StringBuffer )
 
 /*********************************************************************/
 /*                                                                   */
-/* Initialise the Windows Performance counter                        */
-/*                                                                   */
-/*********************************************************************/
-
-#if (MQAT_DEFAULT == MQAT_WINDOWS_NT)
-
-int InitPerformanceCounter( MYEXITUSERAREA * pExitUserArea )
-{
-  LARGE_INTEGER PerformanceFrequency;
-  QueryPerformanceFrequency( &PerformanceFrequency );
-  pExitUserArea->Frequency = (double) PerformanceFrequency.QuadPart;
-
-  QueryPerformanceCounter( &pExitUserArea->PerformanceCounter );
-
-  return 0;
-}
-
-#endif
-
-/*********************************************************************/
-/*                                                                   */
 /* Make a timestamp string using the current time                    */
 /*                                                                   */
 /*********************************************************************/
@@ -3830,14 +3809,6 @@ void MQENTRY EntryPoint ( PMQAXP   pExitParms
       pExitParms->ExitResponse = MQXCC_FAILED;
     }
   }
-
-  /*******************************************************************/
-  /* Initialise the Windows Performance counter                      */
-  /*******************************************************************/
-
-#if (MQAT_DEFAULT == MQAT_WINDOWS_NT)
-  if (rc == MQRC_NONE)  InitPerformanceCounter( pExitUserArea );
-#endif
 
   /*******************************************************************/
   /* Get the options                                                 */
