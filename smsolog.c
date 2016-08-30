@@ -1525,6 +1525,7 @@ void MQENTRY GetAfter    ( PMQAXP    pExitParms
   myGetRelativeTime( buffer2, pExitUserArea );
 
   fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
+  fprintf(fp, "  User: %s\n", pExitContext -> UserId);
 
   if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
     DumpParms( fp, pExitParms );
@@ -1533,7 +1534,8 @@ void MQENTRY GetAfter    ( PMQAXP    pExitParms
     DumpContext( fp, pExitContext );
 
   fprintf(fp, "  MsgDesc       : %s\n", strptr(ppMsgDesc,     "0x%p", buffer1));
-  //fprintf(fp, "  MsgId         : %s\n", &ppMsgDesc)
+  fprintf(fp, "  MsgId         : %s\n", (*ppMsgDesc)->MsgId);
+  fprintf(fp, "  MsgType       : %d\n", (*ppMsgDesc)->MsgType);
   DumpHex(fp, *ppMsgDesc, sizeof(MQMD));
   fprintf(fp, "  GetMsgOpts    : %s\n", strptr(ppGetMsgOpts,  "0x%p", buffer1));
   DumpHex(fp, *ppGetMsgOpts, sizeof(MQGMO));
