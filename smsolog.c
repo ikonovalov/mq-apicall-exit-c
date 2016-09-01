@@ -116,6 +116,7 @@
 #include <limits.h>
 #include <ctype.h>
 #include <time.h>
+#include <syslog.h>
 
 #include <cmqec.h>
 
@@ -1184,6 +1185,7 @@ void MQENTRY CmitAfter   ( PMQAXP    pExitParms
   myGetRelativeTime( buffer2, pExitUserArea );
 
   fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
+  syslog(LOG_INFO, "MQCMIT ProcessId:%d", pExitContext->ProcessId);
 
   if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
     DumpParms( fp, pExitParms );
@@ -1524,6 +1526,13 @@ void MQENTRY GetAfter    ( PMQAXP    pExitParms
   myGetAbsoluteTime( buffer1, sizeof(buffer1) );
   myGetRelativeTime( buffer2, pExitUserArea );
 
+  syslog(LOG_INFO, "MQGET UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+         pExitContext ->UserId,
+         (*ppMsgDesc)->MsgId,
+         (*ppMsgDesc)->MsgType,
+         (*ppGetMsgOpts)->ResolvedQName
+  );
+
   fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
   fprintf(fp, "  User: %s\n", pExitContext -> UserId);
 
@@ -1534,8 +1543,6 @@ void MQENTRY GetAfter    ( PMQAXP    pExitParms
     DumpContext( fp, pExitContext );
 
   fprintf(fp, "  MsgDesc       : %s\n", strptr(ppMsgDesc,     "0x%p", buffer1));
-  fprintf(fp, "  MsgId         : %s\n", (*ppMsgDesc)->MsgId);
-  fprintf(fp, "  MsgType       : %d\n", (*ppMsgDesc)->MsgType);
   DumpHex(fp, *ppMsgDesc, sizeof(MQMD));
   fprintf(fp, "  GetMsgOpts    : %s\n", strptr(ppGetMsgOpts,  "0x%p", buffer1));
   DumpHex(fp, *ppGetMsgOpts, sizeof(MQGMO));
@@ -2191,6 +2198,9 @@ void MQENTRY EntryPoint ( PMQAXP   pExitParms
     rc = MQRC_API_EXIT_ERROR;
     pExitParms->ExitResponse = MQXCC_FAILED;
   }
+
+    openlog("smsolog", LOG_PID, LOG_USER);
+    syslog(LOG_INFO, "SoLog entryPoint");
 
   /*******************************************************************/
   /* Malloc storage for the ExitUserArea                             */
