@@ -1,119 +1,6 @@
-/* @(#) MQMBID sn=p750-004-140807 su=_pY8W4B4HEeS1ypf5zzZGLw pn=samples/c/amqsaxe0.c */
-/********************************************************************/
-/*                                                                  */
-/* Program name: AMQSAXE0                                           */
-/*                                                                  */
-/* Description: Sample ApiExit which traces MQAPI calls             */
-/*   <copyright                                                     */
-/*   notice="lm-source-program"                                     */
-/*   pids="5724-H72,"                  C                             */
-/*   years="1994,2012"                                              */
-/*   crc="47404793" >                                               */
-/*  Licensed Materials - Property of IBM                            */
-/*                                                                  */
-/*  5724-H72,                                                       */
-/*                                                                  */
-/*  (C) Copyright IBM Corp. 1994, 2012 All Rights Reserved.         */
-/*                                                                  */
-/*  US Government Users Restricted Rights - Use, duplication or     */
-/*  disclosure restricted by GSA ADP Schedule Contract with         */
-/*  IBM Corp.                                                       */
-/*   </copyright>                                                   */
-/********************************************************************/
-/*                                                                  */
-/* Function:                                                        */
-/*                                                                  */
-/*                                                                  */
-/*   AMQSAXE is a sample C ApiExit which traces MQAPI calls         */
-/*                                                                  */
-/*      -- Configure the queue manager                              */
-/*                                                                  */
-/*         On UNIX add a stanza like the following to the           */
-/*         "qm.ini" file                                            */
-/*                                                                  */
-/*         ApiExitLocal:                                            */
-/*           Sequence=100                                           */
-/*           Function=EntryPoint                                    */
-/*           Module=<Module>                                        */
-/*           Name=SampleApiExit                                     */
-/*                                                                  */
-/*           ... where the <Module> is                              */
-/*                 AIX:         /usr/mqm/samp/bin/amqsaxe           */
-/*                 Other UNIXs: /opt/mqm/samp/bin/amqsaxe           */
-/*                 HP NonStop:  amqsaxe                             */
-/*                                                                  */
-/*         On Windows set the equivalent attributes in the registry */
-/*         using the MQ services snapin utility                     */
-/*                                                                  */
-/*      -- Make sure the Module is accessible to MQ                 */
-/*                                                                  */
-/*      -- Restart the Queue Manager to pick up these attributes    */
-/*                                                                  */
-/*      -- In the application process to be traced, describe where  */
-/*         the trace files should be written to.  For example:      */
-/*                                                                  */
-/*         On UNIX, make sure the directory "/var/mqm/trace" exists */
-/*         and export the following environment variable            */
-/*                                                                  */
-/*         "export MQAPI_TRACE_LOGFILE=/var/mqm/trace/ApiTrace"     */
-/*                                                                  */
-/*         On Windows, make sure the directory "C:\temp" exists     */
-/*         and set the following environment variable               */
-/*                                                                  */
-/*         "set MQAPI_TRACE_LOGFILE=C:\temp\ApiTrace"               */
-/*                                                                  */
-/*         On HP NonStop, export the following environment variable */
-/*                                                                  */
-/*         "export MQAPI_TRACE_LOGFILE=<ossdir>/apitrace" (OSS)     */
-/*         "param  MQAPITRACELOGFILE <ossdir>/apitrace"   (Guardian)*/
-/*                                                                  */
-/*      -- Optionally in the application process to be traced,      */
-/*         set the options by setting the following environment     */
-/*         variable                                                 */
-/*                                                                  */
-/*         On UNIX                                                  */
-/*                                                                  */
-/*         "export MQAPI_TRACE_OPTIONS=<value>"                     */
-/*                                                                  */
-/*         On Windows                                               */
-/*                                                                  */
-/*         "set MQAPI_TRACE_OPTIONS=<value>"                        */
-/*                                                                  */
-/*         On HP NonStop Server                                     */
-/*                                                                  */
-/*         "export MQAPI_TRACE_OPTIONS=<value>"   (OSS)             */
-/*         "param  MQAPITRACEOPTIONS <value>"     (Guardian)        */
-/*                                                                  */
-/*         Where <value> is a combination following:                */
-/*                                                                  */
-/*              1    Write context at the start of trace            */
-/*              2    Write context before each MQAPI call           */
-/*              4    Write context in all other cases               */
-/*              8    Write parms   at the start of trace            */
-/*             16    Write parms   before each MQAPI call           */
-/*             32    Write parms   in all other cases               */
-/*             64    Trace Before Dataconv on MQGET                 */
-/*            128    Dump ExitChainAreaPtr when dumping ExitParms   */
-/*                                                                  */
-/*         If MQAPI_TRACE_OPTIONS is not set and the ExitData is    */
-/*         not empty, the options will be set to the numeric value  */
-/*         of ExitData                                              */
-/*                                                                  */
-/*         Otherwise options default to "1"                         */
-/*                                                                  */
-/*   NOTE: On platforms that support separate threaded libraries    */
-/*   (ie AIX, HPUX and Linux) both a non-threaded and a threaded    */
-/*   version of an ApiExit module must be provided.  The threaded   */
-/*   version of the ApiExit module must have an "_r" suffix.  The   */
-/*   threaded version WebSphere MQ Application Stub will implicitly */
-/*   append "_r" to the given Module name before it is loaded.      */
-/*                                                                  */
-/********************************************************************/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
 #include <ctype.h>
 #include <time.h>
 #include <syslog.h>
@@ -159,7 +46,6 @@ typedef struct myExitUserArea
 #define OPTIONS_DUMP_PARMS_AT_START      0x0008
 #define OPTIONS_DUMP_PARMS_BEFORE        0x0010
 #define OPTIONS_DUMP_PARMS_ALWAYS        0x0020
-#define OPTIONS_DUMP_DATACONV            0x0040
 #define OPTIONS_DUMP_EXITCHAINAREA       0x0080
 #define OPTIONS_DEFAULT                  ( OPTIONS_DUMP_CONTEXT_AT_START  \
                                          )
@@ -174,6 +60,10 @@ typedef struct myExitUserArea
 void MQStart()
 {
   ;
+}
+
+unsigned int filter(char *queueName, char* filter) {
+    return strstr(queueName, filter) == NULL ? 1 : 0;
 }
 
 /*********************************************************************/
@@ -574,12 +464,6 @@ MQLONG myBlankCheck ( void * DataPointer, size_t DataLength )
   return result;
 }
 
-/*********************************************************************/
-/*                                                                   */
-/* Check a pointer is valid                                          */
-/*                                                                   */
-/*********************************************************************/
-
 MQLONG myCheckPointer ( void * DataPointer )
 {
   if (DataPointer)
@@ -588,47 +472,7 @@ MQLONG myCheckPointer ( void * DataPointer )
     return 0;
 }
 
-/*********************************************************************/
-/*                                                                   */
-/* Return a string representation of a pointer                       */
-/*                                                                   */
-/*********************************************************************/
-
-char * strptr ( void *Pointer, char *format, char * StringBuffer )
-{
-  if (myCheckPointer( Pointer ))
-  {
-    sprintf( StringBuffer, format, Pointer);
-    return StringBuffer;
-  }
-  else
-    return "(null)";
-}
-
-/*********************************************************************/
-/*                                                                   */
-/* Return a string representation of a pointer                       */
-/*                                                                   */
-/*********************************************************************/
-
-char * strpptr ( void *Pointer, char *format, char * StringBuffer )
-{
-  if (myCheckPointer( Pointer ))
-  {
-    void **pPointer = Pointer;
-    return strptr( *pPointer, format, StringBuffer );
-  }
-  else
-    return "(null)";
-}
-
-/*********************************************************************/
-/*                                                                   */
-/* Make a timestamp string using the current time                    */
-/*                                                                   */
-/*********************************************************************/
-
-void myGetAbsoluteTime ( char * StringBuffer, size_t StringBufferLength )
+void myGetAbsoluteTime(char *StringBuffer, size_t StringBufferLength)
 {
   time_t long_time;
   struct tm *newtime;
@@ -639,26 +483,11 @@ void myGetAbsoluteTime ( char * StringBuffer, size_t StringBufferLength )
   strftime( StringBuffer, StringBufferLength, "%Y-%m-%d  %H:%M:%S", newtime );
 }
 
-void myGetRelativeTime ( char           * StringBuffer
-                         , MYEXITUSERAREA * pExitUserArea
-                       )
+void myGetRelativeTime(char *StringBuffer)
 {
-#if (MQAT_DEFAULT == MQAT_WINDOWS_NT)
-  LARGE_INTEGER PerformanceCounter;
-  double        Counter;
-  double        Period;
-
-  QueryPerformanceCounter( &PerformanceCounter ) ;
-
-  Counter   = (double) ( PerformanceCounter.QuadPart - pExitUserArea->PerformanceCounter.QuadPart );
-  Period    = Counter * 1000000.0 / pExitUserArea->Frequency;
-
-  sprintf( StringBuffer, "%.0lf", Period );
-#else
-  struct timeval t1;
-  gettimeofday(&t1, NULL );
-  sprintf( StringBuffer, "%ld.%06ld", t1.tv_sec, t1.tv_usec );
-#endif
+    struct timeval t1;
+    gettimeofday(&t1, NULL);
+    sprintf(StringBuffer, "%ld.%06ld", t1.tv_sec, t1.tv_usec);
 }
 
 /*********************************************************************/
@@ -900,7 +729,7 @@ void MQENTRY BackBefore  ( PMQAXP    pExitParms
   char              buffer2[50]    = "";
 
   myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
+  myGetRelativeTime( buffer2);
 
   fprintf(fp, "MQBACK\n");
   fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
@@ -938,7 +767,7 @@ void MQENTRY BackAfter  ( PMQAXP    pExitParms
   char              buffer2[50]    = "";
 
   myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
+  myGetRelativeTime( buffer2);
 
   fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
 
@@ -954,97 +783,36 @@ void MQENTRY BackAfter  ( PMQAXP    pExitParms
 
   return;
 }
-
-/*********************************************************************/
-/*                                                                   */
-/* Before MQBEGIN Entrypoint                                         */
-/*                                                                   */
-/*********************************************************************/
 
 MQ_BEGIN_EXIT BeginBefore;
 
-void MQENTRY BeginBefore ( PMQAXP    pExitParms
-                           , PMQAXC    pExitContext
-                           , PMQHCONN  pHconn
-                           , PPMQBO    ppBeginOptions
-                           , PMQLONG   pCompCode
-                           , PMQLONG   pReason
-                         )
-{
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "MQBEGIN\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprintf(fp, "  BeginOptions  : %p\n",   *ppBeginOptions );
-  DumpHex(fp, *ppBeginOptions, sizeof(MQBO));
-
-  return;
-}
-
-/*********************************************************************/
-/*                                                                   */
-/* Before MQBEGIN Entrypoint                                         */
-/*                                                                   */
-/*********************************************************************/
-
 MQ_BEGIN_EXIT BeginAfter;
 
-void MQENTRY BeginAfter  ( PMQAXP    pExitParms
-                           , PMQAXC    pExitContext
-                           , PMQHCONN  pHconn
-                           , PPMQBO    ppBeginOptions
-                           , PMQLONG   pCompCode
-                           , PMQLONG   pReason
-                         )
+void MQENTRY BeginBefore(
+        PMQAXP pExitParms,
+        PMQAXC pExitContext,
+        PMQHCONN pHconn,
+        PPMQBO ppBeginOptions,
+        PMQLONG pCompCode,
+        PMQLONG pReason)
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprintf(fp, "  BeginOptions  : %p\n", *ppBeginOptions );
-  DumpHex(fp, *ppBeginOptions, sizeof(MQBO));
-  fprint_int(fp, "CompCode", pCompCode);
-  fprint_int(fp, "Reason"  , pReason);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
-
-  return;
+    return;
 }
 
-/*********************************************************************/
-/*                                                                   */
-/* Before MQCLOSE Entrypoint                                         */
-/*                                                                   */
-/*********************************************************************/
+void MQENTRY BeginAfter(
+        PMQAXP pExitParms,
+        PMQAXC pExitContext,
+        PMQHCONN pHconn,
+        PPMQBO ppBeginOptions,
+        PMQLONG pCompCode,
+        PMQLONG pReason)
+{
+    return;
+}
 
 MQ_CLOSE_EXIT CloseBefore;
+
+MQ_CLOSE_EXIT CloseAfter;
 
 void MQENTRY CloseBefore ( PMQAXP    pExitParms
                            , PMQAXC    pExitContext
@@ -1055,38 +823,8 @@ void MQENTRY CloseBefore ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "MQCLOSE\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex (fp, "Hconn", pHconn);
-  fprint_phex(fp, "Hobj" , ppHobj);
-  fprintf(fp, "  Options       : %d\n", *pOptions  );
-
   return;
 }
-
-/*********************************************************************/
-/*                                                                   */
-/* After MQCLOSE Entrypoint                                          */
-/*                                                                   */
-/*********************************************************************/
-
-MQ_CLOSE_EXIT CloseAfter;
 
 void MQENTRY CloseAfter  ( PMQAXP    pExitParms
                            , PMQAXC    pExitContext
@@ -1097,28 +835,6 @@ void MQENTRY CloseAfter  ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprint_phex(fp, "Hobj" , ppHobj);
-  fprint_int(fp, "CompCode", pCompCode);
-  fprint_int(fp, "Reason"  , pReason);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
-
   return;
 }
 
@@ -1137,36 +853,13 @@ void MQENTRY CmitBefore  ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "MQCMIT\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-
   return;
 }
 
-/*********************************************************************/
-/*                                                                   */
-/* After MQCMIT Entrypoint                                           */
-/*                                                                   */
-/*********************************************************************/
 
 MQ_CMIT_EXIT CmitAfter;
+
+MQ_CONNX_EXIT ConnBefore;
 
 void MQENTRY CmitAfter   ( PMQAXP    pExitParms
                            , PMQAXC    pExitContext
@@ -1175,38 +868,9 @@ void MQENTRY CmitAfter   ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-  syslog(LOG_INFO, "MQCMIT ProcessId:%d", pExitContext->ProcessId);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprint_int(fp, "CompCode", pCompCode);
-  fprint_int(fp, "Reason"  , pReason);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
 
   return;
 }
-
-/*********************************************************************/
-/*                                                                   */
-/* Before MQCONN Entrypoint                                          */
-/*                                                                   */
-/*********************************************************************/
-
-MQ_CONNX_EXIT ConnBefore;
 
 void MQENTRY ConnBefore  ( PMQAXP    pExitParms
                            , PMQAXC    pExitContext
@@ -1217,27 +881,6 @@ void MQENTRY ConnBefore  ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "MQCONN\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprintf(fp, "  QMgrName      : %.48s\n", QMgrName      );
-  fprintf(fp, "  ConnectOpts   : 0x%p\n", *ppConnectOpts );
-  DumpHex(fp, *ppConnectOpts, sizeof(MQCNO));
 
   return;
 }
@@ -1259,27 +902,11 @@ void MQENTRY ConnAfter   ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprint_phex(fp, "Hconn", ppHconn);
-  fprint_int(fp, "CompCode", pCompCode);
-  fprint_int(fp, "Reason"  , pReason);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
+    syslog(LOG_INFO, "MQCONN: PID:%d, User:%s, AppName:%s",
+           pExitContext -> ProcessId,
+           pExitContext -> UserId,
+           pExitContext -> ApplName
+    );
 
   return;
 }
@@ -1308,7 +935,7 @@ void MQENTRY ConnxBefore ( PMQAXP    pExitParms
   char              buffer2[50]    = "";
 
   myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
+  myGetRelativeTime( buffer2 );
 
   fprintf(fp, "MQCONNX\n");
   fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
@@ -1343,27 +970,9 @@ void MQENTRY ConnxAfter  ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprint_phex(fp, "Hconn", ppHconn);
-  fprint_int(fp, "CompCode", pCompCode);
-  fprint_int(fp, "Reason"  , pReason);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
+    syslog(LOG_INFO, "MQCONNX: PID:%d",
+           pExitContext -> ProcessId
+    );
 
   return;
 }
@@ -1383,25 +992,7 @@ void MQENTRY DiscBefore  ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
 
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "MQDISC\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_phex(fp, "Hconn", ppHconn);
 
   return;
 }
@@ -1421,27 +1012,10 @@ void MQENTRY DiscAfter   ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
 
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprint_phex(fp, "Hconn", ppHconn);
-  fprint_int(fp, "CompCode", pCompCode);
-  fprint_int(fp, "Reason"  , pReason);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
+    syslog(LOG_INFO, "MQDISC: PID:%d",
+        pExitContext -> ProcessId
+    );
 
   return;
 }
@@ -1473,25 +1047,16 @@ void MQENTRY GetBefore   ( PMQAXP    pExitParms
   char              buffer1[50]    = "";
   char              buffer2[50]    = "";
 
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "MQGET\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprint_hex(fp, "Hobj" , pHobj);
-  fprintf(fp, "  MsgDesc       : %s\n", strptr(ppMsgDesc,    "0x%p",   buffer1));
-  DumpHex(fp, *ppMsgDesc, sizeof(MQMD));
-  fprintf(fp, "  GetMsgOpts    : %s\n", strptr(ppGetMsgOpts, "0x%p",   buffer1));
-  DumpHex(fp, *ppGetMsgOpts, sizeof(MQGMO));
-  fprint_int(fp, "BufferLength", pBufferLength);
+    char *resolvedQName = (*ppGetMsgOpts)->ResolvedQName;
+    if (filter(resolvedQName, "SYSTEM"))
+    {
+        syslog(LOG_INFO, "MQGET_Bfr UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+               pExitContext->UserId,
+               (*ppMsgDesc)->MsgId,
+               (*ppMsgDesc)->MsgType,
+               resolvedQName
+        );
+    }
 
   return;
 }
@@ -1517,48 +1082,17 @@ void MQENTRY GetAfter    ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
 
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  syslog(LOG_INFO, "MQGET UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
-         pExitContext ->UserId,
-         (*ppMsgDesc)->MsgId,
-         (*ppMsgDesc)->MsgType,
-         (*ppGetMsgOpts)->ResolvedQName
-  );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-  fprintf(fp, "  User: %s\n", pExitContext -> UserId);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprintf(fp, "  MsgDesc       : %s\n", strptr(ppMsgDesc,     "0x%p", buffer1));
-  DumpHex(fp, *ppMsgDesc, sizeof(MQMD));
-  fprintf(fp, "  GetMsgOpts    : %s\n", strptr(ppGetMsgOpts,  "0x%p", buffer1));
-  DumpHex(fp, *ppGetMsgOpts, sizeof(MQGMO));
-  fprintf(fp, "  Buffer        : %s\n", strptr(ppBuffer,  "0x%p", buffer1));
-
-  if (  myCheckPointer( pCompCode )
-        && ((*pCompCode == MQCC_OK) || (*pCompCode == MQCC_WARNING))
-     )
-  {
-    DumpHex(fp, *ppBuffer, min(1024, **ppDataLength));
-  }
-  fprint_pint(fp, "DataLength"  , ppDataLength);
-
-  fprint_int(fp, "CompCode", pCompCode);
-  fprint_int(fp, "Reason"  , pReason);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
+    char *resolvedQName = (*ppGetMsgOpts)->ResolvedQName;
+    if (filter(resolvedQName, "SYSTEM"))
+    {
+        syslog(LOG_INFO, "MQGET_Aft UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+               pExitContext->UserId,
+               (*ppMsgDesc)->MsgId,
+               (*ppMsgDesc)->MsgType,
+               resolvedQName
+        );
+    }
 
   return;
 }
@@ -1581,29 +1115,7 @@ void MQENTRY OpenBefore  ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
 
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "MQOPEN\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprintf(fp, "  pObjDesc      : %s\n",   strptr(ppObjDesc, "0x%p",   buffer1));
-  DumpHex(fp, *ppObjDesc, sizeof(MQOD));
-  fprintf(fp, "  Options       : %s\n",   strptr(pOptions,  "0x%X", buffer1));
-  fprintf(fp, "  pHobj         : %s\n",   strptr(ppHobj,    "0x%X",   buffer1));
 
   return;
 }
@@ -1626,29 +1138,12 @@ void MQENTRY OpenAfter   ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
 
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprintf(fp, "  pObjDesc      : %s\n", strptr(ppObjDesc, "0x%p",  buffer1));
-  DumpHex(fp, *ppObjDesc, sizeof(MQOD));
-  fprint_phex(fp, "Hobj" , ppHobj);
-  fprint_int(fp, "CompCode", pCompCode);
-  fprint_int(fp, "Reason"  , pReason);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
+    PMQOD pObjDesc = *ppObjDesc;
+    syslog(LOG_INFO, "MQOPEN_Atf: ObjectName:%s, ResolvedName:%s",
+        pObjDesc -> ObjectName,
+        pObjDesc->ResolvedQName
+    );
 
   return;
 }
@@ -1673,35 +1168,7 @@ void MQENTRY PutBefore   ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
 
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "MQPUT\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprint_hex(fp, "Hobj" , pHobj);
-  fprintf(fp, "  MsgDesc       : %s\n", strptr(ppMsgDesc,     "0x%p",   buffer1));
-  DumpHex(fp, *ppMsgDesc, sizeof(MQMD));
-  fprintf(fp, "  PutMsgOpts    : %s\n", strptr(ppPutMsgOpts,  "0x%p",   buffer1));
-  DumpHex(fp, *ppPutMsgOpts, sizeof(MQPMO));
-  fprintf(fp, "  BufferLength  : %s\n", strptr(pBufferLength, "%d",   buffer1));
-  fprintf(fp, "  Buffer        : %s\n", strptr(ppBuffer,      "0x%p",   buffer1));
-
-  if (myCheckPointer( pBufferLength ))
-    DumpHex(fp, *ppBuffer, min(1024, *pBufferLength));
 
   return;
 }
@@ -1726,30 +1193,7 @@ void MQENTRY PutAfter    ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
 
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprintf(fp, "  MsgDesc       : %s\n", strptr(ppMsgDesc,    "0x%p", buffer1));
-  DumpHex(fp, *ppMsgDesc, sizeof(MQMD));
-  fprintf(fp, "  PutMsgOpts    : %s\n", strptr(ppPutMsgOpts, "0x%p", buffer1));
-  DumpHex(fp, *ppPutMsgOpts, sizeof(MQPMO));
-  fprint_int(fp, "CompCode", pCompCode);
-  fprint_int(fp, "Reason"  , pReason);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
 
   return;
 }
@@ -1774,45 +1218,11 @@ void MQENTRY Put1Before  ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
 
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "MQPUT1\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprintf(fp, "  pObjDesc      : %s\n", strptr(ppObjDesc,     "0x%p",   buffer1));
-  DumpHex(fp, *ppObjDesc, sizeof(MQOD));
-  fprintf(fp, "  MsgDesc       : %s\n", strptr(ppMsgDesc,     "0x%p",   buffer1));
-  DumpHex(fp, *ppMsgDesc, sizeof(MQMD));
-  fprintf(fp, "  Put1MsgOpts    : %s\n",strptr(ppPut1MsgOpts, "0x%p",   buffer1));
-  DumpHex(fp, *ppPut1MsgOpts, sizeof(MQPMO));
-  fprintf(fp, "  BufferLength  : %s\n", strptr(pBufferLength, "%d",   buffer1));
-  fprintf(fp, "  Buffer        : %s\n", strptr(ppBuffer,      "0x%p",   buffer1));
-
-  if (myCheckPointer( pBufferLength ))
-    DumpHex(fp, *ppBuffer, min(1024, *pBufferLength));
 
   return;
 }
 
-/*********************************************************************/
-/*                                                                   */
-/* After MQPUT1 Entrypoint                                           */
-/*                                                                   */
-/*********************************************************************/
 
 MQ_PUT1_EXIT Put1After;
 
@@ -1828,349 +1238,104 @@ void MQENTRY Put1After   ( PMQAXP    pExitParms
                            , PMQLONG   pReason
                          )
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprintf(fp, "  pObjDesc      : 0x%p\n",   *ppObjDesc      );
-  DumpHex(fp, *ppObjDesc, sizeof(MQOD));
-  fprintf(fp, "  MsgDesc       : 0x%p\n",   *ppMsgDesc      );
-  DumpHex(fp, *ppMsgDesc, sizeof(MQMD));
-  fprintf(fp, "  Put1MsgOpts    : 0x%p\n",  *ppPut1MsgOpts );
-  DumpHex(fp, *ppPut1MsgOpts, sizeof(MQPMO));
-  fprint_int(fp, "CompCode", pCompCode);
-  fprint_int(fp, "Reason"  , pReason);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
-
   return;
 }
-
-
-
-/*********************************************************************/
-/*                                                                   */
-/* Before xa_commit Entrypoint                                       */
-/*                                                                   */
-/*********************************************************************/
 
 XA_COMMIT_EXIT XACommitBefore;
 
-void MQENTRY XACommitBefore   ( PMQAXP    pExitParms
-                                , PMQAXC    pExitContext
-                                , PMQHCONN  pHconn
-                                , PMQPTR    ppXID
-                                , PMQLONG   pRmid
-                                , PMQLONG   pFlags
-                                , PMQLONG   pXARetCode)
+void MQENTRY XACommitBefore(
+        PMQAXP pExitParms,
+        PMQAXC pExitContext,
+        PMQHCONN pHconn,
+        PMQPTR ppXID,
+        PMQLONG pRmid,
+        PMQLONG pFlags,
+        PMQLONG pXARetCode)
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "xa_commit\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprintf(fp, "  ppXID     : %s\n",   strpptr(ppXID, "0x%p", buffer1));
-  fprintf(fp, "  Rmid          : %d\n",   *pRmid);
-  fprintf(fp, "  Flags         : %d\n",   *pFlags);
-  return;
+    return;
 }
-
-/*********************************************************************/
-/*                                                                   */
-/* After xa_commit Entrypoint                                        */
-/*                                                                   */
-/*********************************************************************/
 
 XA_COMMIT_EXIT XACommitAfter;
 
-void MQENTRY XACommitAfter    ( PMQAXP    pExitParms
-                                , PMQAXC    pExitContext
-                                , PMQHCONN  pHconn
-                                , PMQPTR    ppXID
-                                , PMQLONG   pRmid
-                                , PMQLONG   pFlags
-                                , PMQLONG   pXARetCode)
+void MQENTRY XACommitAfter(
+        PMQAXP pExitParms,
+        PMQAXC pExitContext,
+        PMQHCONN pHconn,
+        PMQPTR ppXID,
+        PMQLONG pRmid,
+        PMQLONG pFlags,
+        PMQLONG pXARetCode)
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprintf(fp, "  ppXID     : %s\n",   strpptr(ppXID, "0x%p", buffer1));
-  fprintf(fp, "  Rmid          : %d\n",   *pRmid);
-  fprintf(fp, "  Flags         : %d\n",   *pFlags);
-  fprintf(fp, "  XA Return code: %d\n",   *pXARetCode);
-
-  fprintf(fp, "--------------------------------------------------------------------------\n");
-
-  return;
+    return;
 }
 
-
-
-
-/*********************************************************************/
-/*                                                                   */
-/* Before xa_open Entrypoint                                         */
-/*                                                                   */
-/*********************************************************************/
 
 XA_OPEN_EXIT XAOpenBefore;
 
-void MQENTRY XAOpenBefore   ( PMQAXP    pExitParms
-                              , PMQAXC    pExitContext
-                              , PMQHCONN  pHconn
-                              , PPMQCHAR  ppXa_info
-                              , PMQLONG   pRmid
-                              , PMQLONG   pFlags
-                              , PMQLONG   pXARetCode)
+void MQENTRY XAOpenBefore(
+        PMQAXP pExitParms,
+        PMQAXC pExitContext,
+        PMQHCONN pHconn,
+        PPMQCHAR ppXa_info,
+        PMQLONG pRmid,
+        PMQLONG pFlags,
+        PMQLONG pXARetCode)
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "xa_open\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprintf(fp, "  ppXa_info     : %s\n",   strpptr(ppXa_info, "0x%p", buffer1));
-  if (ppXa_info && *ppXa_info)
-  {
-    DumpHex(fp, *ppXa_info, strlen(*ppXa_info));
-  }
-  fprintf(fp, "  Rmid          : %d\n",   *pRmid);
-  fprintf(fp, "  Flags         : %d\n",   *pFlags);
-  return;
+    return;
 }
-
-/*********************************************************************/
-/*                                                                   */
-/* After xa_open Entrypoint                                          */
-/*                                                                   */
-/********************************************************************/
 
 XA_OPEN_EXIT XAOpenAfter;
 
-void MQENTRY XAOpenAfter ( PMQAXP    pExitParms
-                           , PMQAXC    pExitContext
-                           , PMQHCONN  pHconn
-                           , PPMQCHAR  ppXa_info
-                           , PMQLONG   pRmid
-                           , PMQLONG   pFlags
-                           , PMQLONG   pXARetCode)
+void MQENTRY XAOpenAfter(
+        PMQAXP pExitParms,
+        PMQAXC pExitContext,
+        PMQHCONN pHconn,
+        PPMQCHAR ppXa_info,
+        PMQLONG pRmid,
+        PMQLONG pFlags,
+        PMQLONG pXARetCode)
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprintf(fp, "  ppXa_info     : %s\n",   strpptr(ppXa_info, "0x%p", buffer1));
-  if (ppXa_info && *ppXa_info)
-  {
-    DumpHex(fp, *ppXa_info, strlen(*ppXa_info));
-  }
-  fprintf(fp, "  Rmid          : %d\n",   *pRmid);
-  fprintf(fp, "  Flags         : %d\n",   *pFlags);
-  fprintf(fp, "  XA Return code: %d\n",   *pXARetCode);
-
-  fprintf(fp, "--------------------------------------------------------------------------\n");
-
-  return;
+    return;
 }
-
-
-/*********************************************************************/
-/*                                                                   */
-/* Before xa_rollback Entrypoint                                     */
-/*                                                                   */
-/*********************************************************************/
 
 XA_ROLLBACK_EXIT XARollbackBefore;
 
-void MQENTRY XARollbackBefore  ( PMQAXP    pExitParms
-                                 , PMQAXC    pExitContext
-                                 , PMQHCONN  pHconn
-                                 , PMQPTR    ppXID
-                                 , PMQLONG   pRmid
-                                 , PMQLONG   pFlags
-                                 , PMQLONG   pXARetCode)
+void MQENTRY XARollbackBefore(
+        PMQAXP pExitParms,
+        PMQAXC pExitContext,
+        PMQHCONN pHconn,
+        PMQPTR ppXID,
+        PMQLONG pRmid,
+        PMQLONG pFlags,
+        PMQLONG pXARetCode)
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "xa_rollback\n");
-  fprintf(fp, TITLE_FORMAT, "BEFORE", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_BEFORE)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_BEFORE)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprintf(fp, "  ppXID     : %s\n",   strpptr(ppXID, "0x%p", buffer1));
-  fprintf(fp, "  Rmid          : %d\n",   *pRmid);
-  fprintf(fp, "  Flags         : %d\n",   *pFlags);
-  return;
+    return;
 }
-
-/*********************************************************************/
-/*                                                                   */
-/* After xa_rollback Entrypoint                                      */
-/*                                                                   */
-/*********************************************************************/
 
 XA_ROLLBACK_EXIT XARollbackAfter;
 
-void MQENTRY XARollbackAfter   ( PMQAXP    pExitParms
-                                 , PMQAXC    pExitContext
-                                 , PMQHCONN  pHconn
-                                 , PMQPTR    ppXID
-                                 , PMQLONG   pRmid
-                                 , PMQLONG   pFlags
-                                 , PMQLONG   pXARetCode)
+void MQENTRY XARollbackAfter(
+        PMQAXP pExitParms,
+        PMQAXC pExitContext,
+        PMQHCONN pHconn,
+        PMQPTR ppXID,
+        PMQLONG pRmid,
+        PMQLONG pFlags,
+        PMQLONG pXARetCode)
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, TITLE_FORMAT, "AFTER", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprint_hex(fp, "Hconn", pHconn);
-  fprintf(fp, "  ppXID     : %s\n",   strpptr(ppXID, "0x%p", buffer1));
-  fprintf(fp, "  Rmid          : %d\n",   *pRmid);
-  fprintf(fp, "  Flags         : %d\n",   *pFlags);
-  fprintf(fp, "  XA Return code: %d\n",   *pXARetCode);
-  fprintf(fp, "--------------------------------------------------------------------------\n");
-
-  return;
+    return;
 }
-
-/*********************************************************************/
-/*                                                                   */
-/* TERM                                                              */
-/*                                                                   */
-/*********************************************************************/
 
 MQ_TERM_EXIT Terminate;
 
-void MQENTRY Terminate ( PMQAXP   pExitParms
-                         , PMQAXC   pExitContext
-                         , PMQLONG  pCompCode
-                         , PMQLONG  pReason
-                       )
+void MQENTRY Terminate(
+        PMQAXP pExitParms,
+        PMQAXC pExitContext,
+        PMQLONG pCompCode,
+        PMQLONG pReason)
 {
-  MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
-  MYEXITUSERAREA  * pExitUserArea  = *ppExitUserArea;
-  FILE            * fp             = pExitUserArea->fp;
-  char              buffer1[50]    = "";
-  char              buffer2[50]    = "";
-
-  myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-  myGetRelativeTime( buffer2, pExitUserArea );
-
-  fprintf(fp, "MQAPI Trace\n");
-  fprintf(fp, TITLE_FORMAT, "END", buffer1, buffer2);
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_ALWAYS)
-    DumpParms( fp, pExitParms );
-
-  if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_ALWAYS)
-    DumpContext( fp, pExitContext );
-
-  fprintf(fp, "--------------------------------------------------------------------------\n");
-
-  fclose(fp);
-  free( pExitUserArea );
-
-  return;
+    return;
 }
-
-/*********************************************************************/
-/*                                                                   */
-/* Initialisation function                                           */
-/*                                                                   */
-/*********************************************************************/
 
 MQ_INIT_EXIT EntryPoint;
 
@@ -2265,7 +1430,7 @@ void MQENTRY EntryPoint ( PMQAXP   pExitParms
         char buffer2[50] = "";
 
         myGetAbsoluteTime( buffer1, sizeof(buffer1) );
-        myGetRelativeTime( buffer2, pExitUserArea );
+        myGetRelativeTime( buffer2 );
 
         pExitUserArea->fp = fp;
         fprintf(fp, "MQAPI Trace\n");
