@@ -1,10 +1,8 @@
-cmake_minimum_required(VERSION 3.5)
-project(mq_apicall_exit_c)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+PROJECT(mq_apicall_exit_c)
 
 INCLUDE_DIRECTORIES(/opt/mqm/inc)
-#LINK_DIRECTORIES(/opt/mqm/lib64)
 
 SET(CMAKE_INCLUDE_CURRENT_DIR ON)
 
