@@ -763,10 +763,7 @@ MQLONG myBlankCheck(void *DataPointer, size_t DataLength) {
 }
 
 MQLONG myCheckPointer(void *DataPointer) {
-    if (DataPointer)
-        return 1;
-    else
-        return 0;
+    return DataPointer ? 1 : 0;
 }
 
 void myGetAbsoluteTime(char *StringBuffer, size_t StringBufferLength) {
@@ -835,111 +832,6 @@ void DumpHex(FILE *fp, void *DataPointer, size_t DataLength
             }
 
             fprintf(fp, "          %s", StringBuffer);
-        }
-    }
-}
-
-/*********************************************************************/
-/*                                                                   */
-/* Dump the ExitChainAreaPtr                                         */
-/*                                                                   */
-/*********************************************************************/
-
-void DumpExitChainArea(FILE *fp, PMQAXP pExitParms) {
-    MYEXITUSERAREA **ppExitUserArea = (void *) &pExitParms->ExitUserArea;
-    MYEXITUSERAREA *pExitUserArea = *ppExitUserArea;
-    MQACH *ExitChainAreaPtr = pExitParms->ExitChainAreaPtr;
-
-    if ((pExitUserArea->Options & OPTIONS_DUMP_EXITCHAINAREA)
-        && (ExitChainAreaPtr)
-            ) {
-        fprintf(fp, "   --------------------------\n");
-        fprintf(fp, "   ExitChainAreaPtr:       %p\n", ExitChainAreaPtr);
-
-        while (ExitChainAreaPtr) {
-            fprintf(fp, "    StrucId:               %.4s\n", ExitChainAreaPtr->StrucId);
-
-            if (memcmp(ExitChainAreaPtr->StrucId, MQACH_STRUC_ID, 4)) {
-                fprintf(fp, "ERROR *** BAD MQACH StrucId ***\n");
-                ExitChainAreaPtr = NULL;
-            } else {
-                fprintf(fp, "    Version:               %d\n", ExitChainAreaPtr->Version);
-                fprintf(fp, "    StrucLength:           %d\n", ExitChainAreaPtr->StrucLength);
-                fprintf(fp, "    ChainAreaLength:       %d\n", ExitChainAreaPtr->ChainAreaLength);
-                fprintf(fp, "    ExitInfoName:          %.48s\n", ExitChainAreaPtr->ExitInfoName);
-                fprintf(fp, "    NextChainAreaPtr:      %p\n", ExitChainAreaPtr->NextChainAreaPtr);
-
-                ExitChainAreaPtr = ExitChainAreaPtr->NextChainAreaPtr;
-
-                fprintf(fp, "   --------------------------\n");
-                fprintf(fp, "   ExitChainAreaPtr:       %p\n", ExitChainAreaPtr);
-            }
-        }
-
-        fprintf(fp, "   --------------------------\n");
-    } else
-        fprintf(fp, "   ExitChainAreaPtr:       %p\n", ExitChainAreaPtr);
-}
-
-/*********************************************************************/
-/*                                                                   */
-/* Dump the ApiExit Params                                           */
-/*                                                                   */
-/*********************************************************************/
-
-void MQENTRY DumpParms(FILE *fp, PMQAXP pExitParms) {
-    char buffer[50] = "";
-
-    fprintf(fp, "  PARMS\n");
-    fprintf(fp, "   ExitId:                 %s\n", strExitId(pExitParms->ExitId, buffer));
-    fprintf(fp, "   ExitReason:             %s\n", strExitReason(pExitParms->ExitReason, buffer));
-    fprintf(fp, "   ExitResponse:           %s\n", strExitResponse(pExitParms->ExitResponse, buffer));
-    fprintf(fp, "   ExitResponse2:          %s\n", strExitResponse2(pExitParms->ExitResponse2, buffer));
-    fprintf(fp, "   Feedback:               %s\n", strFeedback(pExitParms->Feedback, buffer));
-    fprintf(fp, "   APICallerType:          %s\n", strAPICallerType(pExitParms->APICallerType, buffer));
-    fprintf(fp, "   ExitUserArea:           %p\n", pExitParms->ExitUserArea);
-    DumpHex(fp, pExitParms->ExitUserArea, MQ_EXIT_USER_AREA_LENGTH);
-    fprintf(fp, "   ExitData:               %.32s\n", pExitParms->ExitData);
-    fprintf(fp, "   ExitInfoName:           %.48s\n", pExitParms->ExitInfoName);
-    fprintf(fp, "   ExitPDArea:             %p\n", pExitParms->ExitPDArea);
-    DumpHex(fp, pExitParms->ExitPDArea, MQ_EXIT_PD_AREA_LENGTH);
-    fprintf(fp, "   QMgrName:               %.48s\n", pExitParms->QMgrName);
-    DumpExitChainArea(fp, pExitParms);
-    fprintf(fp, "   Hconfig:                %p\n", pExitParms->Hconfig);
-    fprintf(fp, "   Function:               %s\n", strFunctionId(pExitParms->Function, buffer));
-}
-
-/*********************************************************************/
-/*                                                                   */
-/* Dump the ApiExit Context                                          */
-/*                                                                   */
-/*********************************************************************/
-
-void MQENTRY DumpContext(FILE *fp, PMQAXC pExitContext) {
-    char buffer[50] = "";
-
-    fprintf(fp, "  CONTEXT\n");
-    fprintf(fp, "   Environment:            %s\n", strEnvironment(pExitContext->Environment, buffer));
-    fprintf(fp, "   UserId:                 %.12s\n", pExitContext->UserId);
-    fprintf(fp, "   SecurityId:\n");
-    DumpHex(fp, pExitContext->SecurityId, MQ_SECURITY_ID_LENGTH);
-    fprintf(fp, "   ConnectionName:         %.264s\n", pExitContext->ConnectionName);
-    fprintf(fp, "   LongMCAUserIdLength:    %d\n", pExitContext->LongMCAUserIdLength);
-    DumpHex(fp, pExitContext->LongMCAUserIdPtr, pExitContext->LongMCAUserIdLength);
-    fprintf(fp, "   LongRemoteUserIdLength: %d\n", pExitContext->LongRemoteUserIdLength);
-    DumpHex(fp, pExitContext->LongRemoteUserIdPtr, pExitContext->LongRemoteUserIdLength);
-    fprintf(fp, "   ApplName:               %.28s\n", pExitContext->ApplName);
-    fprintf(fp, "   ApplType:               %s\n", strApplType(pExitContext->ApplType, buffer));
-    fprintf(fp, "   ProcessId:              %d\n", pExitContext->ProcessId);
-    fprintf(fp, "   ThreadId:               %d\n", pExitContext->ThreadId);
-
-    if (pExitContext->Version >= MQAXC_VERSION_2) {
-        if (pExitContext->ChannelName[0]) {
-            fprintf(fp, "   ChannelName:            %.20s\n", pExitContext->ChannelName);
-        }
-        if (pExitContext->pChannelDefinition) {
-            fprintf(fp, "   ChannelType:            %s\n",
-                    strChannelType(pExitContext->pChannelDefinition->ChannelType, buffer));
         }
     }
 }
@@ -1048,7 +940,7 @@ void MQENTRY ConnAfter(
         PPMQHCONN ppHconn,
         PMQLONG pCompCode,
         PMQLONG pReason) {
-    syslog(LOG_INFO, "MQCONN: PID:%d, User:%s, AppName:%s",
+    syslog(LOG_INFO, "#MQCONN PID:%d, User:%s, AppName:%s",
            pExitContext->ProcessId,
            pExitContext->UserId,
            pExitContext->ApplName
@@ -1152,7 +1044,7 @@ void MQENTRY GetAfter(
 
     char *resolvedQName = (*ppGetMsgOpts)->ResolvedQName;
     if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
-        syslog(LOG_INFO, "MQGET_AFT UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+        syslog(LOG_INFO, "#MQGET_AFT UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
                pExitContext->UserId,
                (*ppMsgDesc)->MsgId,
                (*ppMsgDesc)->MsgType,
