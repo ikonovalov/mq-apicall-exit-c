@@ -37,34 +37,24 @@
 
 typedef struct myExitUserArea
 {
-    FILE *fp;
     MQLONG Options;
 
 } MYEXITUSERAREA;
 
-#define OPTIONS_DUMP_CONTEXT_AT_START    0x0001
-#define OPTIONS_DUMP_CONTEXT_BEFORE      0x0002
-#define OPTIONS_DUMP_CONTEXT_ALWAYS      0x0004
-#define OPTIONS_DUMP_PARMS_AT_START      0x0008
-#define OPTIONS_DUMP_PARMS_BEFORE        0x0010
-#define OPTIONS_DUMP_PARMS_ALWAYS        0x0020
 #define OPTIONS_DUMP_EXITCHAINAREA       0x0080
-#define OPTIONS_DEFAULT                  ( OPTIONS_DUMP_CONTEXT_AT_START  \
-                                         )
-#define TITLE_FORMAT        " %-25.25s %20.20s %26.26s\n"
 
-/*********************************************************************/
-/*                                                                   */
-/* Standard MQ Entrypoint                                            */
-/*                                                                   */
-/*********************************************************************/
 
 void MQStart() {
     ;
 }
 
-unsigned int filter(char *queueName, char *filter) {
+
+unsigned int excludeQueue(char* queueName, char *filter) {
     return strstr(queueName, filter) == NULL ? 1 : 0;
+}
+
+unsigned int excludeUser(PMQAXC context, char* excludedUser) {
+    return strstr(context -> UserId, excludedUser) == NULL ? 1 : 0;
 }
 
 /*********************************************************************/
@@ -982,75 +972,63 @@ void fprint_phex(FILE *fp, char *name, MQLONG **pValue) {
 
 MQ_BACK_EXIT BackBefore;
 
-void MQENTRY BackBefore(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PMQLONG pCompCode, PMQLONG pReason
-) {
+void MQENTRY BackBefore(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PMQLONG pCompCode, PMQLONG pReason)
+{
     return;
 }
 
 MQ_BACK_EXIT BackAfter;
 
-void MQENTRY BackAfter(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PMQLONG pCompCode, PMQLONG pReason
-) {
+void MQENTRY BackAfter(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PMQLONG pCompCode, PMQLONG pReason)
+{
     return;
 }
 
 MQ_BEGIN_EXIT BeginBefore;
 
-MQ_BEGIN_EXIT BeginAfter;
-
-void MQENTRY BeginBefore(
-        PMQAXP pExitParms,
-        PMQAXC pExitContext,
-        PMQHCONN pHconn,
-        PPMQBO ppBeginOptions,
-        PMQLONG pCompCode,
-        PMQLONG pReason) {
+void MQENTRY BeginBefore(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PPMQBO ppBeginOptions, PMQLONG pCompCode, PMQLONG pReason)
+{
     return;
 }
 
-void MQENTRY BeginAfter(
-        PMQAXP pExitParms,
-        PMQAXC pExitContext,
-        PMQHCONN pHconn,
-        PPMQBO ppBeginOptions,
-        PMQLONG pCompCode,
-        PMQLONG pReason) {
+MQ_BEGIN_EXIT BeginAfter;
+
+void MQENTRY BeginAfter(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PPMQBO ppBeginOptions, PMQLONG pCompCode, PMQLONG pReason)
+{
     return;
 }
 
 MQ_CLOSE_EXIT CloseBefore;
 
-MQ_CLOSE_EXIT CloseAfter;
-
-void MQENTRY CloseBefore(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PPMQHOBJ ppHobj, PMQLONG pOptions,
-                         PMQLONG pCompCode, PMQLONG pReason
-) {
+void MQENTRY CloseBefore(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PPMQHOBJ ppHobj, PMQLONG pOptions, PMQLONG pCompCode, PMQLONG pReason)
+{
     return;
 }
 
-void MQENTRY CloseAfter(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PPMQHOBJ ppHobj, PMQLONG pOptions,
-                        PMQLONG pCompCode, PMQLONG pReason
-) {
+MQ_CLOSE_EXIT CloseAfter;
+
+void MQENTRY CloseAfter(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PPMQHOBJ ppHobj, PMQLONG pOptions, PMQLONG pCompCode, PMQLONG pReason)
+{
     return;
 }
 
 MQ_CMIT_EXIT CmitBefore;
 
-void MQENTRY CmitBefore(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PMQLONG pCompCode, PMQLONG pReason
-) {
+void MQENTRY CmitBefore(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PMQLONG pCompCode, PMQLONG pReason)
+{
     return;
 }
 
 
 MQ_CMIT_EXIT CmitAfter;
 
-MQ_CONNX_EXIT ConnBefore;
-
 void MQENTRY CmitAfter(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PMQLONG pCompCode, PMQLONG pReason
 ) {
 
     return;
 }
+
+MQ_CONNX_EXIT ConnBefore;
 
 void MQENTRY
 ConnBefore(PMQAXP pExitParms, PMQAXC pExitContext, MQCHAR48 QMgrName, PPMQCNO ppConnectOpts, PPMQHCONN ppHconn,
@@ -1147,18 +1125,15 @@ void MQENTRY GetBefore(
         PPMQLONG ppDataLength,
         PMQLONG pCompCode,
         PMQLONG pReason) {
-    char *resolvedQName = (*ppGetMsgOpts)->ResolvedQName;
-    if (filter(resolvedQName, "SYSTEM")) {
-        syslog(LOG_INFO, "MQGET_Bfr UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
-               pExitContext->UserId,
-               (*ppMsgDesc)->MsgId,
-               (*ppMsgDesc)->MsgType,
-               resolvedQName
-        );
-    }
 
     return;
 }
+
+/*
+ * TODO:
+ * 1) отключить пользователя mqm
+ * 2) CONN-OPEN-PUT/GET-CMIT/BACK-DISC/TERM
+ */
 
 MQ_GET_EXIT GetAfter;
 
@@ -1174,9 +1149,10 @@ void MQENTRY GetAfter(
         PPMQLONG ppDataLength,
         PMQLONG pCompCode,
         PMQLONG pReason) {
+
     char *resolvedQName = (*ppGetMsgOpts)->ResolvedQName;
-    if (filter(resolvedQName, "SYSTEM")) {
-        syslog(LOG_INFO, "MQGET_Aft UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+    if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
+        syslog(LOG_INFO, "MQGET_AFT UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
                pExitContext->UserId,
                (*ppMsgDesc)->MsgId,
                (*ppMsgDesc)->MsgType,
@@ -1215,10 +1191,11 @@ void MQENTRY OpenAfter(
         PMQLONG pReason) {
 
     PMQOD pObjDesc = *ppObjDesc;
-    syslog(LOG_INFO, "MQOPEN_Atf: ObjectName:%s, ResolvedName:%s",
-           pObjDesc->ObjectName,
-           pObjDesc->ResolvedQName
-    );
+    char* objectName = pObjDesc -> ObjectName;
+
+    if (excludeQueue(objectName, "SYSTEM") && strlen(objectName) > 0) {
+        syslog(LOG_INFO, "MQOPEN_AFT: ObjectName:%s", pObjDesc->ObjectName);
+    }
 
     return;
 }
@@ -1254,23 +1231,24 @@ void MQENTRY PutAfter(
         PMQLONG pCompCode,
         PMQLONG pReason) {
 
+    char *resolvedQName = (*ppPutMsgOpts)->ResolvedQName;
+    if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
+        syslog(LOG_INFO, "MQPUT_AFT UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+               pExitContext->UserId,
+               (*ppMsgDesc)->MsgId,
+               (*ppMsgDesc)->MsgType,
+               resolvedQName
+        );
+    }
 
     return;
 }
 
 MQ_PUT1_EXIT Put1Before;
 
-void MQENTRY Put1Before(
-        PMQAXP pExitParms,
-        PMQAXC pExitContext,
-        PMQHCONN pHconn,
-        PPMQOD ppObjDesc,
-        PPMQMD ppMsgDesc,
-        PPMQPMO ppPut1MsgOpts,
-        PMQLONG pBufferLength,
-        PPMQVOID ppBuffer,
-        PMQLONG pCompCode,
-        PMQLONG pReason) {
+void MQENTRY Put1Before(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PPMQOD ppObjDesc, PPMQMD ppMsgDesc, PPMQPMO ppPut1MsgOpts,
+        PMQLONG pBufferLength, PPMQVOID ppBuffer, PMQLONG pCompCode, PMQLONG pReason)
+{
     return;
 }
 
@@ -1288,6 +1266,16 @@ void MQENTRY Put1After(
         PPMQVOID ppBuffer,
         PMQLONG pCompCode,
         PMQLONG pReason) {
+
+    char* objectName = (*ppObjDesc) ->ObjectName;
+    if (excludeQueue(objectName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
+        syslog(LOG_INFO, "MQPUT_AFT UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+               pExitContext->UserId,
+               (*ppMsgDesc)->MsgId,
+               (*ppMsgDesc)->MsgType,
+               objectName
+        );
+    }
     return;
 }
 
@@ -1387,11 +1375,7 @@ void MQENTRY EntryPoint(PMQAXP pExitParms, PMQAXC pExitContext, PMQLONG pCompCod
     MQLONG rc = MQRC_NONE;
     MYEXITUSERAREA **ppExitUserArea = (void *) &pExitParms->ExitUserArea;
     MYEXITUSERAREA *pExitUserArea = NULL;
-    FILE *fp = NULL;
     char *env = NULL;
-    char logfile[1024] = "";
-    MQPID pid = 0;
-    MQPID tid = 0;
 
     /*******************************************************************/
     /* Make sure that the Hconfig supplied contains the interface      */
@@ -1403,7 +1387,7 @@ void MQENTRY EntryPoint(PMQAXP pExitParms, PMQAXC pExitContext, PMQLONG pCompCod
     }
 
     openlog("smsolog", LOG_PID, LOG_USER);
-    syslog(LOG_INFO, "SoLog entryPoint");
+    //syslog(LOG_INFO, "SoLog entryPoint");
 
     /*******************************************************************/
     /* Malloc storage for the ExitUserArea                             */
@@ -1421,436 +1405,385 @@ void MQENTRY EntryPoint(PMQAXP pExitParms, PMQAXC pExitContext, PMQLONG pCompCod
     }
 
     /*******************************************************************/
-    /* Get the options                                                 */
-    /*******************************************************************/
-
-    if (rc == MQRC_NONE) {
-        env = getenv("MQAPI_TRACE_OPTIONS");
-
-        if (env)
-            pExitUserArea->Options = atoi(env);
-
-        else if (myBlankCheck(pExitParms->ExitData, MQ_EXIT_DATA_LENGTH))
-            pExitUserArea->Options = OPTIONS_DEFAULT;
-
-        else
-            pExitUserArea->Options = atoi(pExitParms->ExitData);
-    }
-
-    /*******************************************************************/
     /* Write to the logfile                                            */
     /*******************************************************************/
 
     if (rc == MQRC_NONE) {
-        env = getenv("MQAPI_TRACE_LOGFILE");
+        /***************************************************************/
+        /* Register the MQBACK entrypoints                             */
+        /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_BACK, (PMQFUNC) BackBefore, NULL,
+                                            pCompCode, pReason
+            );
 
-        if (env) {
-            /***************************************************************/
-            /* Open the log file                                           */
-            /***************************************************************/
-
-            sprintf(logfile, "%s.%d.%d.log", env, pExitContext->ProcessId, pExitContext->ThreadId);
-            fp = fopen(logfile, "w");
-
-            if (fp == NULL) {
-                rc = MQRC_API_EXIT_ERROR;
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
                 pExitParms->ExitResponse = MQXCC_FAILED;
-            } else {
-                char buffer1[50] = "";
-                char buffer2[50] = "";
-
-                myGetAbsoluteTime(buffer1, sizeof(buffer1));
-                myGetRelativeTime(buffer2);
-
-                pExitUserArea->fp = fp;
-                fprintf(fp, "MQAPI Trace\n");
-                fprintf(fp, TITLE_FORMAT, "START", buffer1, buffer2);
-
-                if (pExitUserArea->Options & OPTIONS_DUMP_PARMS_AT_START)
-                    DumpParms(fp, pExitParms);
-
-                if (pExitUserArea->Options & OPTIONS_DUMP_CONTEXT_AT_START)
-                    DumpContext(fp, pExitContext);
-
-                fprintf(fp, "--------------------------------------------------------------------------\n");
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQBACK entrypoints                             */
-            /***************************************************************/
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_BACK, (PMQFUNC) BackBefore, NULL,
-                                                pCompCode, pReason
-                );
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_BACK, (PMQFUNC) BackAfter, NULL,
+                                            pCompCode, pReason
+            );
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_BACK, (PMQFUNC) BackAfter, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the MQBEGIN entrypoints                            */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_BEGIN, (PMQFUNC) BeginBefore,
+                                            NULL, pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQBEGIN entrypoints                            */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_BEGIN, (PMQFUNC) BeginAfter, NULL,
+                                            pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_BEGIN, (PMQFUNC) BeginBefore,
-                                                NULL, pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_BEGIN, (PMQFUNC) BeginAfter, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the MQCLOSE entrypoints                            */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_CLOSE, (PMQFUNC) CloseBefore,
+                                            NULL, pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQCLOSE entrypoints                            */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_CLOSE, (PMQFUNC) CloseAfter, NULL,
+                                            pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_CLOSE, (PMQFUNC) CloseBefore,
-                                                NULL, pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_CLOSE, (PMQFUNC) CloseAfter, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the MQCMIT entrypoints                             */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_CMIT, (PMQFUNC) CmitBefore, NULL,
+                                            pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQCMIT entrypoints                             */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_CMIT, (PMQFUNC) CmitAfter, NULL,
+                                            pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_CMIT, (PMQFUNC) CmitBefore, NULL,
-                                                pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_CMIT, (PMQFUNC) CmitAfter, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the MQCONN entrypoints                             */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_CONN, (PMQFUNC) ConnBefore, NULL,
+                                            pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQCONN entrypoints                             */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_CONN, (PMQFUNC) ConnAfter, NULL,
+                                            pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_CONN, (PMQFUNC) ConnBefore, NULL,
-                                                pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_CONN, (PMQFUNC) ConnAfter, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the MQCONNX entrypoints                            */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_CONNX, (PMQFUNC) ConnxBefore,
+                                            NULL, pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQCONNX entrypoints                            */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_CONNX, (PMQFUNC) ConnxAfter, NULL,
+                                            pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_CONNX, (PMQFUNC) ConnxBefore,
-                                                NULL, pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_CONNX, (PMQFUNC) ConnxAfter, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the MQDISC entrypoints                             */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_DISC, (PMQFUNC) DiscBefore, NULL,
+                                            pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQDISC entrypoints                             */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_DISC, (PMQFUNC) DiscAfter, NULL,
+                                            pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_DISC, (PMQFUNC) DiscBefore, NULL,
-                                                pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_DISC, (PMQFUNC) DiscAfter, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the MQGET entrypoints                              */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_GET, (PMQFUNC) GetBefore, NULL,
+                                            pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQGET entrypoints                              */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_GET, (PMQFUNC) GetAfter, NULL,
+                                            pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_GET, (PMQFUNC) GetBefore, NULL,
-                                                pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_GET, (PMQFUNC) GetAfter, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the MQOPEN entrypoints                             */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_OPEN, (PMQFUNC) OpenBefore, NULL,
+                                            pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQOPEN entrypoints                             */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_OPEN, (PMQFUNC) OpenAfter, NULL,
+                                            pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_OPEN, (PMQFUNC) OpenBefore, NULL,
-                                                pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_OPEN, (PMQFUNC) OpenAfter, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the MQPUT entrypoints                              */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_PUT, (PMQFUNC) PutBefore, NULL,
+                                            pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQPUT entrypoints                              */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_PUT, (PMQFUNC) PutAfter, NULL,
+                                            pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_PUT, (PMQFUNC) PutBefore, NULL,
-                                                pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_PUT, (PMQFUNC) PutAfter, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the MQPUT1 entrypoints                             */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_PUT1, (PMQFUNC) Put1Before, NULL,
+                                            pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the MQPUT1 entrypoints                             */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_PUT1, (PMQFUNC) Put1After, NULL,
+                                            pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_PUT1, (PMQFUNC) Put1Before, NULL,
-                                                pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_PUT1, (PMQFUNC) Put1After, NULL,
-                                                pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the xa_commit entrypoints                          */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_XACOMMIT,
+                                            (PMQFUNC) XACommitBefore, NULL, pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the xa_commit entrypoints                          */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_XACOMMIT, (PMQFUNC) XACommitAfter,
+                                            NULL, pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_XACOMMIT,
-                                                (PMQFUNC) XACommitBefore, NULL, pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_XACOMMIT, (PMQFUNC) XACommitAfter,
-                                                NULL, pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the xa_open entrypoints                            */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_XAOPEN, (PMQFUNC) XAOpenBefore,
+                                            NULL, pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the xa_open entrypoints                            */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_XAOPEN, (PMQFUNC) XAOpenAfter,
+                                            NULL, pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_XAOPEN, (PMQFUNC) XAOpenBefore,
-                                                NULL, pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_XAOPEN, (PMQFUNC) XAOpenAfter,
-                                                NULL, pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the xa_rollback entrypoints                        */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_XAROLLBACK,
+                                            (PMQFUNC) XARollbackBefore, NULL, pCompCode, pReason
+            );
+
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            /***************************************************************/
-            /* Register the xa_rollback entrypoints                        */
-            /***************************************************************/
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_XAROLLBACK,
+                                            (PMQFUNC) XARollbackAfter, NULL, pCompCode, pReason
+            );
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_BEFORE, MQXF_XAROLLBACK,
-                                                (PMQFUNC) XARollbackBefore, NULL, pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
+        }
 
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_AFTER, MQXF_XAROLLBACK,
-                                                (PMQFUNC) XARollbackAfter, NULL, pCompCode, pReason
-                );
+        /***************************************************************/
+        /* Register the termination entrypoint                         */
+        /***************************************************************/
 
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
-            }
+        if (rc == MQRC_NONE) {
+            pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_CONNECTION, MQXF_TERM, (PMQFUNC) Terminate,
+                                            NULL, pCompCode, pReason
+            );
 
-            /***************************************************************/
-            /* Register the termination entrypoint                         */
-            /***************************************************************/
-
-            if (rc == MQRC_NONE) {
-                pExitParms->Hconfig->MQXEP_Call(pExitParms->Hconfig, MQXR_CONNECTION, MQXF_TERM, (PMQFUNC) Terminate,
-                                                NULL, pCompCode, pReason
-                );
-
-                if (*pReason != MQRC_NONE) {
-                    rc = *pReason;
-                    pExitParms->ExitResponse = MQXCC_FAILED;
-                }
+            if (*pReason != MQRC_NONE) {
+                rc = *pReason;
+                pExitParms->ExitResponse = MQXCC_FAILED;
             }
         }
     }
