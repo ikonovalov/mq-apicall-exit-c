@@ -7,18 +7,7 @@
 
 #include <cmqec.h>
 
-#if (MQAT_DEFAULT == MQAT_WINDOWS_NT)
-#include <windows.h>
-#include <winbase.h>
-#else
-#if MQAT_DEFAULT == MQAT_MVS
-#define _XOPEN_SOURCE_EXTENDED 1
-#define _OPEN_MSGQ_EXT
-#endif
-
 #include <sys/time.h>
-
-#endif
 
 /********************************************************************/
 /* Macros to find the max or min of a pair of numbers               */
@@ -41,9 +30,6 @@ typedef struct myExitUserArea
 
 } MYEXITUSERAREA;
 
-#define OPTIONS_DUMP_EXITCHAINAREA       0x0080
-
-
 void MQStart() {
     ;
 }
@@ -57,38 +43,19 @@ unsigned int excludeUser(PMQAXC context, char* excludedUser) {
     return strstr(context -> UserId, excludedUser) == NULL ? 1 : 0;
 }
 
-/*********************************************************************/
-/*                                                                   */
-/* Convert an environment value into a string                        */
-/*                                                                   */
-/*********************************************************************/
-
-char *strEnvironment(MQLONG Environment, char *Buffer) {
-    char *p = NULL;
-
-    switch (Environment) {
-        case MQXE_OTHER:
-            p = "MQXE_OTHER";
-            break;
-        case MQXE_MCA:
-            p = "MQXE_MCA";
-            break;
-        case MQXE_MCA_SVRCONN:
-            p = "MQXE_MCA_SVRCONN";
-            break;
-        case MQXE_COMMAND_SERVER:
-            p = "MQXE_COMMAND_SERVER";
-            break;
-        case MQXE_MQSC:
-            p = "MQXE_MQSC";
-            break;
-        default:
-            sprintf(Buffer, "%d", Environment);
-            p = Buffer;
+char* tohex(char* input, size_t size) {
+    int i;
+    char* buf_str = (char*) malloc (2*size + 1);
+    char* buf_ptr = buf_str;
+    for (i = 0; i < size; i++)
+    {
+        buf_ptr += sprintf(buf_ptr, "%02X", input[i]);
     }
-
-    return p;
+    sprintf(buf_ptr,"\n");
+    *(buf_ptr + 1) = '\0';
+    return buf_ptr;
 }
+
 
 /*********************************************************************/
 /*                                                                   */
@@ -866,6 +833,7 @@ MQ_BACK_EXIT BackBefore;
 
 void MQENTRY BackBefore(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PMQLONG pCompCode, PMQLONG pReason)
 {
+    syslog(LOG_INFO, "MQBACK PID:%d", pExitContext -> ProcessId);
     return;
 }
 
@@ -901,6 +869,8 @@ MQ_CLOSE_EXIT CloseAfter;
 
 void MQENTRY CloseAfter(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PPMQHOBJ ppHobj, PMQLONG pOptions, PMQLONG pCompCode, PMQLONG pReason)
 {
+
+    syslog(LOG_INFO, "MQCLOSE");
     return;
 }
 
@@ -914,9 +884,9 @@ void MQENTRY CmitBefore(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn,
 
 MQ_CMIT_EXIT CmitAfter;
 
-void MQENTRY CmitAfter(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PMQLONG pCompCode, PMQLONG pReason
-) {
-
+void MQENTRY CmitAfter(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PMQLONG pCompCode, PMQLONG pReason)
+{
+    syslog(LOG_INFO, "MQCMIT PID:%d", pExitContext -> ProcessId);
     return;
 }
 
@@ -940,10 +910,15 @@ void MQENTRY ConnAfter(
         PPMQHCONN ppHconn,
         PMQLONG pCompCode,
         PMQLONG pReason) {
-    syslog(LOG_INFO, "#MQCONN PID:%d, User:%s, AppName:%s",
-           pExitContext->ProcessId,
-           pExitContext->UserId,
-           pExitContext->ApplName
+
+    char buffer[50] = "";
+
+    syslog(LOG_INFO, "MQCONN PID:%d, Caller:%s, User:%s, AppName:%s, Qmgr:%s",
+           pExitContext -> ProcessId,
+           strAPICallerType( pExitParms->APICallerType, buffer ),
+           pExitContext -> UserId,
+           pExitContext -> ApplName,
+           QMgrName
     );
     return;
 }
@@ -963,16 +938,15 @@ void MQENTRY ConnxBefore(
 
 MQ_CONNX_EXIT ConnxAfter;
 
-void MQENTRY ConnxAfter(
-        PMQAXP pExitParms,
-        PMQAXC pExitContext,
-        MQCHAR48 QMgrName,
-        PPMQCNO ppConnectOpts,
-        PPMQHCONN ppHconn,
-        PMQLONG pCompCode,
-        PMQLONG pReason) {
-    syslog(LOG_INFO, "MQCONNX: PID:%d",
-           pExitContext->ProcessId
+void MQENTRY ConnxAfter(PMQAXP pExitParms, PMQAXC pExitContext, MQCHAR48 QMgrName, PPMQCNO ppConnectOpts, PPMQHCONN ppHconn, PMQLONG pCompCode, PMQLONG pReason)
+{
+    char buffer[50] = "";
+    syslog(LOG_INFO, "MQCONNX PID:%d, Caller:%s, User:%s, AppName:%s, Qmrg:%s",
+           pExitContext -> ProcessId,
+           strAPICallerType( pExitParms->APICallerType, buffer),
+           pExitContext -> UserId,
+           pExitContext -> ApplName,
+           QMgrName
     );
 
     return;
@@ -997,7 +971,7 @@ void MQENTRY DiscAfter(
         PPMQHCONN ppHconn,
         PMQLONG pCompCode,
         PMQLONG pReason) {
-    syslog(LOG_INFO, "MQDISC: PID:%d",
+    syslog(LOG_INFO, "MQDISC PID:%d",
            pExitContext->ProcessId
     );
     return;
@@ -1044,7 +1018,7 @@ void MQENTRY GetAfter(
 
     char *resolvedQName = (*ppGetMsgOpts)->ResolvedQName;
     if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
-        syslog(LOG_INFO, "#MQGET_AFT UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+        syslog(LOG_INFO, "MQGET UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
                pExitContext->UserId,
                (*ppMsgDesc)->MsgId,
                (*ppMsgDesc)->MsgType,
@@ -1086,7 +1060,10 @@ void MQENTRY OpenAfter(
     char* objectName = pObjDesc -> ObjectName;
 
     if (excludeQueue(objectName, "SYSTEM") && strlen(objectName) > 0) {
-        syslog(LOG_INFO, "MQOPEN_AFT: ObjectName:%s", pObjDesc->ObjectName);
+        syslog(LOG_INFO, "MQOPEN ObjectName:%s, QM:%s",
+               objectName,
+               pObjDesc -> ObjectQMgrName
+        );
     }
 
     return;
@@ -1125,7 +1102,7 @@ void MQENTRY PutAfter(
 
     char *resolvedQName = (*ppPutMsgOpts)->ResolvedQName;
     if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
-        syslog(LOG_INFO, "MQPUT_AFT UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+        syslog(LOG_INFO, "MQPUT UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
                pExitContext->UserId,
                (*ppMsgDesc)->MsgId,
                (*ppMsgDesc)->MsgType,
@@ -1161,7 +1138,7 @@ void MQENTRY Put1After(
 
     char* objectName = (*ppObjDesc) ->ObjectName;
     if (excludeQueue(objectName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
-        syslog(LOG_INFO, "MQPUT_AFT UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+        syslog(LOG_INFO, "MQPUT1 UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
                pExitContext->UserId,
                (*ppMsgDesc)->MsgId,
                (*ppMsgDesc)->MsgType,
