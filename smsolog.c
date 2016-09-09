@@ -43,17 +43,51 @@ unsigned int excludeUser(PMQAXC context, char* excludedUser) {
     return strstr(context -> UserId, excludedUser) == NULL ? 1 : 0;
 }
 
-char* tohex(char* input, size_t size) {
-    int i;
-    char* buf_str = (char*) malloc (2*size + 1);
-    char* buf_ptr = buf_str;
+char* toHex(char *input, size_t size) {
+    int i = 0;
+    char* buf_str = (char*) malloc (2 * size + 1);
     for (i = 0; i < size; i++)
     {
-        buf_ptr += sprintf(buf_ptr, "%02X", input[i]);
+        sprintf(buf_str + i*2, "%02X", input[i]);
     }
-    sprintf(buf_ptr,"\n");
-    *(buf_ptr + 1) = '\0';
-    return buf_ptr;
+    return  buf_str;
+}
+
+char* toHex24(char* input) {
+    return toHex(input, 24);
+}
+
+char* strTrim(char *input) {
+    unsigned int size = strlen(input);
+    for (int z = 0; z < size; z++) {
+        if (*(input + z) == ' ') {
+            *(input + z) = '\0';
+            return input;
+        }
+    }
+}
+
+
+char *strMsgType(MQLONG type, char* buffer) {
+    char  *ret = NULL;
+    switch (type) {
+        case MQMT_DATAGRAM:
+            ret = "MQMT_DATAGRAM";
+            break;
+        case MQMT_REQUEST:
+            ret = "MQMT_REQUEST";
+            break;
+        case MQMT_REPLY:
+            ret = "MQMT_REPLY";
+            break;
+        case MQMT_REPORT:
+            ret = "MQMT_REPORT";
+            break;
+        default:
+            sprintf(buffer, "%s", buffer);
+            ret = buffer;
+    }
+    return ret;
 }
 
 
@@ -907,12 +941,6 @@ void MQENTRY DiscAfter(
     return;
 }
 
-/*
- * TODO:
- * 1) отключить пользователя mqm
- * 2) CONN-OPEN-PUT/GET-CMIT/BACK-DISC/TERM
- */
-
 MQ_GET_EXIT GetAfter;
 
 void MQENTRY GetAfter(
@@ -928,13 +956,20 @@ void MQENTRY GetAfter(
         PMQLONG pCompCode,
         PMQLONG pReason) {
 
+    char buffer[50] = "";
+
+    // this is MQGET for empty queue
+    if (strlen((*ppMsgDesc) -> MsgId) == 0)
+        return;
+
     char *resolvedQName = (*ppGetMsgOpts)->ResolvedQName;
     if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
-        syslog(LOG_INFO, "MQGET UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
-               pExitContext->UserId,
-               (*ppMsgDesc)->MsgId,
-               (*ppMsgDesc)->MsgType,
-               resolvedQName
+        syslog(LOG_INFO, "MQGET ResolvedQName:%s, UserId:%s, MsgId:%s, MsgType:%s",
+               strTrim(resolvedQName),
+               strTrim(pExitContext->UserId),
+               toHex24((*ppMsgDesc)->MsgId),
+               //(*ppMsgDesc)->MsgId,
+               strMsgType((*ppMsgDesc)->MsgType, buffer)
         );
     }
 
@@ -982,11 +1017,12 @@ void MQENTRY PutAfter(
         PMQLONG pReason) {
 
     char *resolvedQName = (*ppPutMsgOpts)->ResolvedQName;
+    char buffer[50] = "";
     if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
-        syslog(LOG_INFO, "MQPUT UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
-               pExitContext->UserId,
-               (*ppMsgDesc)->MsgId,
-               (*ppMsgDesc)->MsgType,
+        syslog(LOG_INFO, "MQPUT UserId:%s, MsgId:%s, MsgType:%s, ResolvedQName:%s",
+               strTrim(pExitContext->UserId),
+               toHex24((*ppMsgDesc)->MsgId),
+               strMsgType((*ppMsgDesc)->MsgType, buffer),
                resolvedQName
         );
     }
