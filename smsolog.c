@@ -27,6 +27,7 @@
 typedef struct myExitUserArea
 {
     MQLONG Options;
+    MQCHAR * openObject;
 
 } MYEXITUSERAREA;
 
@@ -886,7 +887,9 @@ MQ_CLOSE_EXIT CloseAfter;
 
 void MQENTRY CloseAfter(PMQAXP pExitParms, PMQAXC pExitContext, PMQHCONN pHconn, PPMQHOBJ ppHobj, PMQLONG pOptions, PMQLONG pCompCode, PMQLONG pReason)
 {
-    syslog(LOG_INFO, "MQCLOSE");
+    MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
+    char objectName[48];
+    syslog(LOG_INFO, "MQCLOSE %s", strSized((*ppExitUserArea) -> openObject, objectName, 48));
     return;
 }
 
@@ -1005,6 +1008,10 @@ void MQENTRY OpenAfter(
     PMQOD pObjDesc = *ppObjDesc;
     char* objectName = pObjDesc -> ObjectName;
 
+    MYEXITUSERAREA ** ppExitUserArea = (void*) &pExitParms->ExitUserArea;
+    (*ppExitUserArea) -> openObject = objectName;
+
+
     if (excludeQueue(objectName, "SYSTEM") && !isAllWhitespace(objectName, 48)) {
         char objectNameTrim[50], queueManager[50];
         syslog(LOG_INFO, "MQOPEN ObjectName:%s, QM:%s",
@@ -1061,7 +1068,7 @@ void MQENTRY Put1After(
     char* objectName = (*ppObjDesc) ->ObjectName;
     char userId[13], msgType[32], resQName[50];
     if (excludeQueue(objectName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
-        syslog(LOG_INFO, "MQPUT1 UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+        syslog(LOG_INFO, "MQPUT1 UserId:%s, MsgId:%s, MsgType:%s, ResolvedQName:%s",
                strSized(pExitContext->UserId, userId, 12),
                toHex24((*ppMsgDesc)->MsgId),
                strMsgType((*ppMsgDesc)->MsgType, msgType),
