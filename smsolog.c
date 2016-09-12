@@ -63,6 +63,15 @@ char* strSized(char *input, char *buffer, int sz) {
     return buffer;
 }
 
+unsigned char isAllWhitespace(char* string, int sz) {
+    for (int z = 0; z < sz; z++) {
+        if (!isspace(*(string + z))) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 
 char *strMsgType(MQLONG type, char* buffer) {
     char  *ret = NULL;
@@ -991,7 +1000,7 @@ void MQENTRY OpenAfter(
     PMQOD pObjDesc = *ppObjDesc;
     char* objectName = pObjDesc -> ObjectName;
 
-    if (excludeQueue(objectName, "SYSTEM") && strlen(objectName) > 0) {
+    if (excludeQueue(objectName, "SYSTEM") && !isAllWhitespace(objectName, 48)) {
         char objectNameTrim[50], queueManager[50];
         syslog(LOG_INFO, "MQOPEN ObjectName:%s, QM:%s",
                strSized(objectName, objectNameTrim, 48),
