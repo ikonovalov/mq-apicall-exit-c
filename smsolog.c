@@ -57,14 +57,10 @@ char* toHex24(char* input) {
     return toHex(input, 24);
 }
 
-char* strTrim(char *input) {
-    unsigned int size = strlen(input);
-    for (int z = 0; z < size; z++) {
-        if (*(input + z) == ' ') {
-            *(input + z) = '\0';
-            return input;
-        }
-    }
+char* strSized(char *input, char *buffer, int sz) {
+    memset(buffer, '\0', sz + 1);
+    strncpy(buffer, input, sz);
+    return buffer;
 }
 
 
@@ -899,14 +895,15 @@ void MQENTRY ConnAfter(
         PMQLONG pCompCode,
         PMQLONG pReason) {
 
-    char buffer[50] = "";
+    char applicationType[64], userId[13], application[16], queueManager[50];
 
-    syslog(LOG_INFO, "MQCONN PID:%d, Caller:%s, User:%s, AppName:%s, Qmgr:%s",
-           pExitContext -> ProcessId,
-           strAPICallerType( pExitParms->APICallerType, buffer ),
-           pExitContext -> UserId,
-           pExitContext -> ApplName,
-           QMgrName
+    syslog(LOG_INFO, "MQCONNX PID:%d, Caller:%s(%d), User:%s, AppName:%s, Qmrg:%s",
+           pExitContext->ProcessId,
+           strAPICallerType(pExitParms->APICallerType, applicationType),
+           pExitParms->APICallerType,
+           strSized(pExitContext->UserId, userId, 12),
+           strSized(pExitContext->ApplName, application, 12),
+           strSized(QMgrName, queueManager, 48)
     );
     return;
 }
@@ -915,13 +912,15 @@ MQ_CONNX_EXIT ConnxAfter;
 
 void MQENTRY ConnxAfter(PMQAXP pExitParms, PMQAXC pExitContext, MQCHAR48 QMgrName, PPMQCNO ppConnectOpts, PPMQHCONN ppHconn, PMQLONG pCompCode, PMQLONG pReason)
 {
-    char buffer[50] = "";
-    syslog(LOG_INFO, "MQCONNX PID:%d, Caller:%s, User:%s, AppName:%s, Qmrg:%s",
-           pExitContext -> ProcessId,
-           strAPICallerType( pExitParms->APICallerType, buffer),
-           pExitContext -> UserId,
-           pExitContext -> ApplName,
-           QMgrName
+    char applicationType[64], userId[13], application[16], queueManager[50];
+
+    syslog(LOG_INFO, "MQCONNX PID:%d, Caller:%s(%d), User:%s, AppName:%s, Qmrg:%s",
+           pExitContext->ProcessId,
+           strAPICallerType(pExitParms->APICallerType, applicationType),
+           pExitParms->APICallerType,
+           strSized(pExitContext->UserId, userId, 12),
+           strSized(pExitContext->ApplName, application, 12),
+           strSized(QMgrName, queueManager, 48)
     );
 
     return;
@@ -956,20 +955,20 @@ void MQENTRY GetAfter(
         PMQLONG pCompCode,
         PMQLONG pReason) {
 
-    char buffer[50] = "";
 
     // this is MQGET for empty queue
     if (strlen((*ppMsgDesc) -> MsgId) == 0)
         return;
 
+    char resQName[50], userId[13], msgType[32];
+
     char *resolvedQName = (*ppGetMsgOpts)->ResolvedQName;
     if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
         syslog(LOG_INFO, "MQGET ResolvedQName:%s, UserId:%s, MsgId:%s, MsgType:%s",
-               strTrim(resolvedQName),
-               strTrim(pExitContext->UserId),
+               strSized(resolvedQName, resQName, 48),
+               strSized(pExitContext->UserId, userId, 12),
                toHex24((*ppMsgDesc)->MsgId),
-               //(*ppMsgDesc)->MsgId,
-               strMsgType((*ppMsgDesc)->MsgType, buffer)
+               strMsgType((*ppMsgDesc)->MsgType, msgType)
         );
     }
 
@@ -993,9 +992,10 @@ void MQENTRY OpenAfter(
     char* objectName = pObjDesc -> ObjectName;
 
     if (excludeQueue(objectName, "SYSTEM") && strlen(objectName) > 0) {
+        char objectNameTrim[50], queueManager[50];
         syslog(LOG_INFO, "MQOPEN ObjectName:%s, QM:%s",
-               objectName,
-               pObjDesc -> ObjectQMgrName
+               strSized(objectName, objectNameTrim, 48),
+               strSized(pObjDesc -> ObjectQMgrName, queueManager, 48)
         );
     }
 
@@ -1020,7 +1020,7 @@ void MQENTRY PutAfter(
     char buffer[50] = "";
     if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
         syslog(LOG_INFO, "MQPUT UserId:%s, MsgId:%s, MsgType:%s, ResolvedQName:%s",
-               strTrim(pExitContext->UserId),
+               strSized(pExitContext->UserId, buffer, 12),
                toHex24((*ppMsgDesc)->MsgId),
                strMsgType((*ppMsgDesc)->MsgType, buffer),
                resolvedQName
