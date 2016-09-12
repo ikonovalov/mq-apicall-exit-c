@@ -64,8 +64,13 @@ char* strSized(char *input, char *buffer, int sz) {
 }
 
 unsigned char isAllWhitespace(char* string, int sz) {
+    // MQ str can't starts with empty
+    if (*string == ' ' || *string == '\0')
+        return 1;
+
     for (int z = 0; z < sz; z++) {
-        if (!isspace(*(string + z))) {
+        char c = *(string + z);
+        if (!isspace(c) && !isblank(c)) {
             return 0;
         }
     }
