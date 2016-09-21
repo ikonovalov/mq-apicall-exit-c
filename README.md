@@ -15,4 +15,9 @@ ApiExitLocal:
    Module=/var/mqm/exits64/Installation1/libsmsolog.so
 </pre>
 
+#### Stop & compile & start
+<pre>
+endmqm DEFQM -w; gcc -m64 -shared -fPIC -o /var/mqm/exits64/Installation1/libsmsolog.so_r smsolog.c -I/opt/mqm/inc && echo "Compiled" && strmqm DEFQM
+</pre>
+
 
