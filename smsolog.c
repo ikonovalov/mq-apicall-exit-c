@@ -977,7 +977,7 @@ void MQENTRY GetAfter(
     char resQName[50], userId[13], msgType[32];
 
     char *resolvedQName = (*ppGetMsgOpts)->ResolvedQName;
-    if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
+    if (excludeQueue(resolvedQName, "SYSTEM")) {
         syslog(LOG_INFO, "MQGET ResolvedQName:%s, UserId:%s, MsgId:%s, MsgType:%s",
                strSized(resolvedQName, resQName, 48),
                strSized(pExitContext->UserId, userId, 12),
@@ -1032,7 +1032,7 @@ void MQENTRY PutAfter(
 
     char *resolvedQName = (*ppPutMsgOpts)->ResolvedQName;
     char userId[13], msgType[32], resQName[50];
-    if (excludeQueue(resolvedQName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
+    if (excludeQueue(resolvedQName, "SYSTEM")) {
         syslog(LOG_INFO, "MQPUT UserId:%s, MsgId:%s, MsgType:%s, ResolvedQName:%s",
                strSized(pExitContext->UserId, userId, 12),
                toHex24((*ppMsgDesc)->MsgId),
@@ -1060,8 +1060,8 @@ void MQENTRY Put1After(
 
     char* objectName = (*ppObjDesc) ->ObjectName;
     char userId[13], msgType[32], resQName[50];
-    if (excludeQueue(objectName, "SYSTEM") && excludeUser(pExitContext, "mqm")) {
-        syslog(LOG_INFO, "MQPUT1 UserId:%s, MsgId:%s, MsgType:%d, ResolvedQName:%s",
+    if (excludeQueue(objectName, "SYSTEM")) {
+        syslog(LOG_INFO, "MQPUT1 UserId:%s, MsgId:%s, MsgType:%s, ResolvedQName:%s",
                strSized(pExitContext->UserId, userId, 12),
                toHex24((*ppMsgDesc)->MsgId),
                strMsgType((*ppMsgDesc)->MsgType, msgType),
